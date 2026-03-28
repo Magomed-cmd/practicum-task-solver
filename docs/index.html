@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Solver — Документация</title>
+  <title>Task Solver — Documentation</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
   <style>
     :root {
@@ -574,7 +574,7 @@
         <li>Открой <code>chrome://extensions</code>.</li>
         <li>Включи режим разработчика.</li>
         <li>Нажми <code>Load unpacked</code>.</li>
-        <li>Выбери папку <code>/Users/valiev/Downloads/test_ext</code>.</li>
+        <li>Выбери папку <code>/Users/valiev/Downloads/practicum-task-solver</code>.</li>
       </ol>
 
       <h3>Если расширение уже подключено</h3>
@@ -600,6 +600,13 @@
       <h3>Остановка</h3>
       <p>Остановка мягкая. Кнопка <code>Остановить цикл</code> не рубит процесс на полушаге, а ждёт завершения текущего действия.</p>
 
+      <h3>Что видно во время работы</h3>
+      <ul>
+        <li>Popup сейчас минималистичный и тёмный: одна статус-плашка и одна кнопка управления.</li>
+        <li>В popup видно текущий шаг: например, поиск следующего экрана, solve или ожидание перед <code>reload</code>.</li>
+        <li>Там же сохраняется короткий отчёт по последней решённой задаче: сколько solve-запросов прошло и какие HTTP-статусы вернул сервер.</li>
+      </ul>
+
       <h3>Какие кнопки он считает безопасными</h3>
       <ul>
         <li><code>Далее</code></li>
@@ -622,14 +629,14 @@
       <p>Расширение может писать подробный лог в файл <code>task-solver.log</code> через локальный HTTP-сервер.</p>
 
       <div class="code-label">Лог-сервер</div>
-      <pre><code>cd /Users/valiev/Downloads/test_ext
+      <pre><code>cd /Users/valiev/Downloads/practicum-task-solver
 node logger-server.js</code></pre>
 
       <div class="code-label">Смотреть лог вживую</div>
-      <pre><code>tail -f /Users/valiev/Downloads/test_ext/task-solver.log</code></pre>
+      <pre><code>tail -f /Users/valiev/Downloads/practicum-task-solver/task-solver.log</code></pre>
 
       <div class="code-label">Очистить лог</div>
-      <pre><code>truncate -s 0 /Users/valiev/Downloads/test_ext/task-solver.log</code></pre>
+      <pre><code>truncate -s 0 /Users/valiev/Downloads/practicum-task-solver/task-solver.log</code></pre>
 
       <table>
         <thead>
@@ -656,6 +663,10 @@ node logger-server.js</code></pre>
             <td>Сервер ответил на solve-запросы.</td>
           </tr>
           <tr>
+            <td><code>Страница грузится слишком долго, перезагружаю вкладку</code></td>
+            <td>Сработал watchdog долгой загрузки.</td>
+          </tr>
+          <tr>
             <td><code>Автоцикл завершён без перехода</code></td>
             <td>Навигация не смогла дожать следующий экран в пределах таймаута.</td>
           </tr>
@@ -677,7 +688,7 @@ node logger-server.js</code></pre>
       <div class="grid-2">
         <div class="card">
           <div class="card-title">Если страница уходит в вечную загрузку</div>
-          <p>Обычно лечится таймингами: увеличиваются паузы перед solve, reload и между кликами.</p>
+          <p>Сейчас есть watchdog: если Practicum грузится слишком долго, расширение само попробует перезагрузить вкладку.</p>
         </div>
         <div class="card">
           <div class="card-title">Если стопается на теории</div>
@@ -735,7 +746,7 @@ flowchart TD
       <div class="section-no">06B</div>
       <h2>Модули</h2>
 
-      <div class="tree">test_ext/
+      <div class="tree">practicum-task-solver/
 ├── manifest.json
 ├── background.js
 ├── config.js
@@ -746,7 +757,8 @@ flowchart TD
 ├── popup.html
 ├── popup.js
 ├── README.md
-├── DEVELOPER.md
+├── docs/
+│   └── index.html
 └── task-solver.log</div>
 
       <table>
@@ -759,11 +771,11 @@ flowchart TD
         <tbody>
           <tr>
             <td><code>background.js</code></td>
-            <td>Цикл, сообщения, tab updates, stop/start, защита от дублей.</td>
+            <td>Цикл, сообщения, tab updates, stop/start, watchdog долгой загрузки, защита от дублей.</td>
           </tr>
           <tr>
             <td><code>pageActions.js</code></td>
-            <td>Поиск кнопок, solve API, переходы по экрану, page-side логи.</td>
+            <td>Поиск кнопок, solve API, переходы по экрану и page-side логи.</td>
           </tr>
           <tr>
             <td><code>config.js</code></td>
@@ -771,7 +783,7 @@ flowchart TD
           </tr>
           <tr>
             <td><code>popup.js</code></td>
-            <td>Получение статуса и переключение цикла из popup.</td>
+            <td>Получение статуса, текущего шага и последнего solve-report из минималистичного тёмного popup.</td>
           </tr>
           <tr>
             <td><code>logger-server.js</code></td>
@@ -803,33 +815,48 @@ flowchart TD
           </tr>
           <tr>
             <td><code>requestSpacingMs</code></td>
-            <td>350 ms</td>
+            <td>125 ms</td>
             <td>Разводит solve-запросы по времени.</td>
           </tr>
           <tr>
             <td><code>preSolveDelayMs</code></td>
-            <td>1200 ms</td>
+            <td>450 ms</td>
             <td>Даёт странице стабилизироваться перед solve.</td>
           </tr>
           <tr>
             <td><code>preReloadDelayMs</code></td>
-            <td>900 ms</td>
+            <td>325 ms</td>
             <td>Снижает шанс загнать страницу в вечную загрузку.</td>
           </tr>
           <tr>
             <td><code>preClickDelayMs</code></td>
-            <td>250 ms</td>
+            <td>75 ms</td>
             <td>Небольшая пауза после scroll и до click.</td>
           </tr>
           <tr>
             <td><code>postClickWaitMs</code></td>
-            <td>1600 ms</td>
+            <td>600 ms</td>
             <td>Даёт интерфейсу успеть перестроиться после click.</td>
+          </tr>
+          <tr>
+            <td><code>domMutationWaitMs</code></td>
+            <td>600 ms</td>
+            <td>Пауза между повторными проверками, если следующий шаг ещё не появился.</td>
           </tr>
           <tr>
             <td><code>continueTimeoutMs</code></td>
             <td>45000 ms</td>
             <td>Лимит на длинные theory-цепочки и переходы между уроками/темами.</td>
+          </tr>
+          <tr>
+            <td><code>loadingWatchdogDelayMs</code></td>
+            <td>10000 ms</td>
+            <td>Через сколько считать, что вкладка зависла в loading и пора пробовать reload.</td>
+          </tr>
+          <tr>
+            <td><code>loadingWatchdogMaxReloads</code></td>
+            <td>2</td>
+            <td>Сколько раз подряд можно автоматически перезагрузить зависшую вкладку.</td>
           </tr>
         </tbody>
       </table>
@@ -867,10 +894,10 @@ flowchart TD
       <h2>Отладка</h2>
 
       <div class="code-label">Проверка config + pageActions</div>
-      <pre><code>node --input-type=module --eval "await import('file:///Users/valiev/Downloads/test_ext/config.js'); await import('file:///Users/valiev/Downloads/test_ext/pageActions.js'); console.log('config/pageActions ok');"</code></pre>
+      <pre><code>node --input-type=module --eval "await import('file:///Users/valiev/Downloads/practicum-task-solver/config.js'); await import('file:///Users/valiev/Downloads/practicum-task-solver/pageActions.js'); console.log('config/pageActions ok');"</code></pre>
 
       <div class="code-label">Проверка background</div>
-      <pre><code>node --input-type=module --eval "globalThis.chrome={commands:{onCommand:{addListener(){}}},runtime:{onMessage:{addListener(){}}},tabs:{onUpdated:{addListener(){}},onRemoved:{addListener(){}}}}; await import('file:///Users/valiev/Downloads/test_ext/background.js'); console.log('background ok');"</code></pre>
+      <pre><code>node --input-type=module --eval "globalThis.chrome={alarms:{onAlarm:{addListener(){}},clear:async()=>true,create:async()=>{}},commands:{onCommand:{addListener(){}}},runtime:{onMessage:{addListener(){}}},tabs:{onUpdated:{addListener(){}},onRemoved:{addListener(){}}},scripting:{},storage:{session:{get:async()=>({}),set:async()=>{}}}}; await import('file:///Users/valiev/Downloads/practicum-task-solver/background.js'); console.log('background ok');"</code></pre>
 
       <p>Самые полезные сигналы при расследовании стопа:</p>
       <ul>
@@ -880,8 +907,8 @@ flowchart TD
       </ul>
 
       <p class="footer-note">
-        Дополнительно сохранены markdown-версии доки: <code>README.md</code> и <code>DEVELOPER.md</code>.
-        Этот HTML-файл нужен как более удобная и красивая “витрина” проекта.
+        Эта HTML-дока синхронизирована с текущим рабочим проектом в <code>/Users/valiev/Downloads/practicum-task-solver</code>
+        и служит основной пользовательской и технической документацией.
       </p>
     </section>
   </main>

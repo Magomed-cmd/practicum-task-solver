@@ -19,15 +19,31 @@ import {
 import { createLogger, queueLogEntries } from "./logger.js";
 
 const processingTabs = new Set();
+const LOADING_WATCHDOG_ALARM_PREFIX = "loading-watchdog:";
 const log = createLogger("background");
 
 registerListeners();
 
 function registerListeners() {
+  chrome.alarms.onAlarm.addListener(handleAlarm);
   chrome.commands.onCommand.addListener(handleCommand);
   chrome.runtime.onMessage.addListener(handleRuntimeMessage);
   chrome.tabs.onUpdated.addListener(handleTabUpdated);
   chrome.tabs.onRemoved.addListener(handleTabRemoved);
+}
+
+function handleAlarm(alarm) {
+  if (!alarm?.name?.startsWith(LOADING_WATCHDOG_ALARM_PREFIX)) {
+    return;
+  }
+
+  const tabId = Number(alarm.name.slice(LOADING_WATCHDOG_ALARM_PREFIX.length));
+
+  if (!Number.isInteger(tabId)) {
+    return;
+  }
+
+  runWithLoggedError("Ошибка watchdog загрузки:", () => handleLoadingWatchdogAlarm(tabId));
 }
 
 function handleCommand(command) {
@@ -61,17 +77,33 @@ function handleRuntimeMessage(message, _sender, sendResponse) {
 }
 
 function handleTabUpdated(tabId, changeInfo, tab) {
-  if (changeInfo.status !== "complete" || !isPracticumUrl(tab.url)) {
+  if (!isPracticumUrl(tab.url)) {
+    return;
+  }
+
+  if (changeInfo.status === "loading") {
+    runWithLoggedError("Не удалось запустить watchdog загрузки:", () => armLoadingWatchdog(tabId));
+    return;
+  }
+
+  if (changeInfo.status !== "complete") {
     return;
   }
 
   log.info("Вкладка обновлена", { tabId, url: tab.url, status: changeInfo.status });
-  runWithLoggedError("Ошибка автоматического цикла:", () => processAutomationForTab(tabId, tab));
+  runWithLoggedError("Ошибка автоматического цикла:", async () => {
+    await clearLoadingWatchdog(tabId);
+    await resetLoadingRecoveryCount(tabId);
+    await processAutomationForTab(tabId, tab);
+  });
 }
 
 function handleTabRemoved(tabId) {
   log.info("Вкладка закрыта, очищаю состояние", { tabId });
-  runWithLoggedError("Не удалось очистить состояние вкладки:", () => clearAutomationState(tabId));
+  runWithLoggedError("Не удалось очистить состояние вкладки:", async () => {
+    await clearLoadingWatchdog(tabId);
+    await clearAutomationState(tabId);
+  });
 }
 
 async function runWithLoggedError(label, task) {
@@ -95,7 +127,9 @@ async function startAutomationOnActiveTab() {
   }
 
   log.info("Запускаю автоматизацию на активной вкладке", { tabId: tab.id, url: tab.url });
-  await setAutomationState(tab.id, createAutomationState());
+  await setAutomationState(tab.id, createAutomationState({
+    detailText: "Цикл запущен"
+  }));
   void processAutomationForTab(tab.id, tab).catch((error) => {
     log.error("Фоновая обработка цикла завершилась ошибкой", {
       tabId: tab.id,
@@ -124,7 +158,8 @@ async function stopAutomationOnActiveTab() {
   if (processingTabs.has(tab.id)) {
     await setAutomationState(tab.id, {
       ...state,
-      stopRequested: true
+      stopRequested: true,
+      detailText: "Остановка после текущего шага"
     });
     log.info("Запрошена остановка цикла после текущего шага", { tabId: tab.id, phase: state.phase });
     return getAutomationStatusForTab(tab.id, tab);
@@ -175,9 +210,93 @@ async function getAutomationStatusForTab(tabId, knownTab) {
     isStopping,
     isBusy: processingTabs.has(tabId),
     phase: state?.phase || null,
+    detailText: state?.detailText || "",
+    lastSolveReport: state?.lastSolveReport || null,
     buttonLabel: getStatusButtonLabel({ isPracticum, isRunning, isStopping }),
     statusText: getStatusText({ isPracticum, isRunning, isStopping, phase: state?.phase })
   };
+}
+
+function getLoadingWatchdogAlarmName(tabId) {
+  return `${LOADING_WATCHDOG_ALARM_PREFIX}${tabId}`;
+}
+
+async function armLoadingWatchdog(tabId) {
+  const state = await getAutomationState(tabId);
+
+  if (!state || state.stopRequested) {
+    return;
+  }
+
+  const delayInMinutes = Math.max(PAGE_AUTOMATION_RULES.loadingWatchdogDelayMs / 60000, 0.5);
+  await chrome.alarms.clear(getLoadingWatchdogAlarmName(tabId));
+  await chrome.alarms.create(getLoadingWatchdogAlarmName(tabId), { delayInMinutes });
+  log.info("Запускаю watchdog долгой загрузки", {
+    tabId,
+    delayMs: PAGE_AUTOMATION_RULES.loadingWatchdogDelayMs,
+    recoveryCount: state.loadingRecoveryCount || 0
+  });
+}
+
+async function clearLoadingWatchdog(tabId) {
+  await chrome.alarms.clear(getLoadingWatchdogAlarmName(tabId));
+}
+
+async function resetLoadingRecoveryCount(tabId) {
+  const state = await getAutomationState(tabId);
+
+  if (!state || !state.loadingRecoveryCount) {
+    return;
+  }
+
+  await setAutomationState(tabId, {
+    ...state,
+    loadingRecoveryCount: 0,
+    detailText: state.detailText || "Загрузка восстановилась"
+  });
+  log.info("Сбрасываю счётчик восстановлений после успешной загрузки", { tabId });
+}
+
+async function handleLoadingWatchdogAlarm(tabId) {
+  const state = await getAutomationState(tabId);
+
+  if (!state) {
+    await clearLoadingWatchdog(tabId);
+    return;
+  }
+
+  const tab = await resolveTab(tabId).catch(() => null);
+
+  if (!tab?.url || !isPracticumUrl(tab.url)) {
+    await clearLoadingWatchdog(tabId);
+    return;
+  }
+
+  const nextRecoveryCount = (state.loadingRecoveryCount || 0) + 1;
+
+  if (nextRecoveryCount > PAGE_AUTOMATION_RULES.loadingWatchdogMaxReloads) {
+    log.error("Долгая загрузка не восстановилась после лимита перезагрузок", {
+      tabId,
+      url: tab.url,
+      maxReloads: PAGE_AUTOMATION_RULES.loadingWatchdogMaxReloads
+    });
+    await clearLoadingWatchdog(tabId);
+    await clearAutomationState(tabId);
+    return;
+  }
+
+  await setAutomationState(tabId, {
+    ...state,
+    loadingRecoveryCount: nextRecoveryCount,
+    detailText: `Страница долго грузится, делаю reload (${nextRecoveryCount}/${PAGE_AUTOMATION_RULES.loadingWatchdogMaxReloads})`
+  });
+  log.warn("Страница грузится слишком долго, перезагружаю вкладку", {
+    tabId,
+    url: tab.url,
+    recoveryAttempt: nextRecoveryCount,
+    maxReloads: PAGE_AUTOMATION_RULES.loadingWatchdogMaxReloads
+  });
+  await chrome.tabs.reload(tabId);
 }
 
 async function processAutomationForTab(tabId, knownTab) {
@@ -231,7 +350,9 @@ async function processAutomationForTab(tabId, knownTab) {
           phase: AUTOMATION_PHASES.solving,
           lastSolvedTaskId: state.lastSolvedTaskId,
           allowSameTaskId: false,
-          stopRequested: state.stopRequested
+          stopRequested: state.stopRequested,
+          detailText: "Новая задача уже открыта",
+          lastSolveReport: state.lastSolveReport
         })
       );
       await solveCurrentTask(tabId);
@@ -284,6 +405,9 @@ async function solveCurrentTask(tabId) {
   }
 
   if (PAGE_AUTOMATION_RULES.preSolveDelayMs > 0) {
+    await updateAutomationState(tabId, {
+      detailText: "Жду стабилизацию страницы перед решением"
+    });
     log.info("Жду стабилизацию страницы перед решением", {
       tabId,
       delayMs: PAGE_AUTOMATION_RULES.preSolveDelayMs
@@ -295,6 +419,9 @@ async function solveCurrentTask(tabId) {
     }
   }
 
+  await updateAutomationState(tabId, {
+    detailText: "Решаю текущую задачу"
+  });
   log.info("Пытаюсь решить текущую задачу", {
     tabId,
     lastSolvedTaskId: currentState.lastSolvedTaskId,
@@ -317,12 +444,15 @@ async function solveCurrentTask(tabId) {
   }
 
   log.info("Задача решена, перезагружаю вкладку", { tabId, taskId: result.taskId });
+  const lastSolveReport = createLastSolveReport(result.taskId, result.results);
   await setAutomationState(
     tabId,
     createAutomationState({
       phase: AUTOMATION_PHASES.awaitingNext,
       lastSolvedTaskId: result.taskId,
-      allowSameTaskId: false
+      allowSameTaskId: false,
+      detailText: "Жду перед перезагрузкой вкладки",
+      lastSolveReport
     })
   );
 
@@ -353,6 +483,9 @@ async function advanceToNextRelevantPage(tabId) {
       tabId,
       lastSolvedTaskId: currentState.lastSolvedTaskId
     });
+    await updateAutomationState(tabId, {
+      detailText: "Ищу следующий экран"
+    });
     const result = await executeMainWorldScript(tabId, advanceThroughPageInPage, [
       currentState.lastSolvedTaskId,
       PAGE_AUTOMATION_RULES
@@ -379,7 +512,9 @@ async function advanceToNextRelevantPage(tabId) {
             phase: AUTOMATION_PHASES.solving,
             lastSolvedTaskId: currentState.lastSolvedTaskId,
             allowSameTaskId: false,
-            stopRequested: currentState.stopRequested
+            stopRequested: currentState.stopRequested,
+            detailText: "Новая задача уже открыта",
+            lastSolveReport: currentState.lastSolveReport
           })
         );
         await solveCurrentTask(tabId);
@@ -408,7 +543,9 @@ async function advanceToNextRelevantPage(tabId) {
     const nextState = createAutomationState({
       phase: AUTOMATION_PHASES.solving,
       lastSolvedTaskId: currentState.lastSolvedTaskId,
-      allowSameTaskId: result.reason === "check-button-found"
+      allowSameTaskId: result.reason === "check-button-found",
+      detailText: "Следующий экран найден",
+      lastSolveReport: currentState.lastSolveReport
     });
 
     await setAutomationState(tabId, nextState);
@@ -475,6 +612,34 @@ async function ensureAutomationCanContinue(tabId, reason) {
   log.info("Остановка цикла подтверждена", { tabId, reason, phase: state.phase });
   await clearAutomationState(tabId);
   return null;
+}
+
+async function updateAutomationState(tabId, patch) {
+  const state = await getAutomationState(tabId);
+
+  if (!state) {
+    return null;
+  }
+
+  const nextState = {
+    ...state,
+    ...patch
+  };
+
+  await setAutomationState(tabId, nextState);
+  return nextState;
+}
+
+function createLastSolveReport(taskId, results) {
+  const normalizedResults = Array.isArray(results) ? results : [];
+
+  return {
+    taskId,
+    successCount: normalizedResults.filter((result) => result?.ok).length,
+    requestCount: normalizedResults.length,
+    statuses: normalizedResults.map((result) => result?.status ?? "ERR"),
+    updatedAt: Date.now()
+  };
 }
 
 function getStatusButtonLabel({ isPracticum, isRunning, isStopping }) {

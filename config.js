@@ -37,6 +37,8 @@ export const PAGE_AUTOMATION_RULES = Object.freeze({
   domMutationWaitMs: 600,
   continueTimeoutMs: 45000,
   duplicateClickCooldownMs: 800,
+  loadingWatchdogDelayMs: 10000,
+  loadingWatchdogMaxReloads: 2,
   blockedContinueSelectors: Object.freeze([
     "button[data-test-id='review-status-body__button']",
     "[data-test-id='review-status-body__button']",
@@ -99,6 +101,9 @@ export function createAutomationState(overrides = {}) {
     lastSolvedTaskId: null,
     allowSameTaskId: false,
     stopRequested: false,
+    loadingRecoveryCount: 0,
+    detailText: "",
+    lastSolveReport: null,
     ...overrides
   };
 }

@@ -5,6 +5,7 @@
   "description": "Автоматически проходит задачи и переходит к следующей",
   "permissions": [
     "activeTab",
+    "alarms",
     "scripting",
     "storage"
   ],

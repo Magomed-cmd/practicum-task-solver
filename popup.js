@@ -2,10 +2,15 @@ import { MESSAGE_TYPES } from "./config.js";
 
 const toggleButton = document.getElementById("toggle");
 const statusElement = document.getElementById("status");
+const detailElement = document.getElementById("detail");
+const reportElement = document.getElementById("report");
+const reportMainElement = document.getElementById("report-main");
+const reportMetaElement = document.getElementById("report-meta");
 
 let currentStatus = null;
 let isBusy = false;
 let currentErrorMessage = "";
+const STATUS_REFRESH_INTERVAL_MS = 250;
 
 toggleButton?.addEventListener("click", async () => {
   if (isBusy) {
@@ -34,7 +39,7 @@ toggleButton?.addEventListener("click", async () => {
 void refreshStatus();
 window.setInterval(() => {
   void refreshStatus({ silent: true });
-}, 1000);
+}, STATUS_REFRESH_INTERVAL_MS);
 
 async function refreshStatus({ silent = false } = {}) {
   if (isBusy && silent) {
@@ -110,20 +115,25 @@ function sendRuntimeMessage(type) {
 }
 
 function renderStatus(status, errorMessage = "") {
-  if (!toggleButton || !statusElement) {
+  if (!toggleButton || !statusElement || !detailElement || !reportElement || !reportMainElement || !reportMetaElement) {
     return;
   }
 
   if (errorMessage) {
     statusElement.textContent = errorMessage;
     statusElement.dataset.tone = "error";
+    detailElement.textContent = "";
   } else if (!status) {
     statusElement.textContent = isBusy ? "Проверяю статус..." : "Статус недоступен";
     statusElement.dataset.tone = "";
+    detailElement.textContent = "";
   } else {
     statusElement.textContent = status.statusText;
     statusElement.dataset.tone = status.isStopping ? "stopping" : status.isRunning ? "running" : "";
+    detailElement.textContent = status.detailText || "";
   }
+
+  renderLastSolveReport(status?.lastSolveReport || null);
 
   if (!status) {
     toggleButton.textContent = isBusy ? "Загрузка..." : "Обнови расширение";
@@ -137,4 +147,21 @@ function renderStatus(status, errorMessage = "") {
     : status.buttonLabel;
   toggleButton.dataset.mode = status.isRunning ? "stop" : "start";
   toggleButton.disabled = isBusy || status.isStopping || (!status.isPracticum && !status.isRunning);
+}
+
+function renderLastSolveReport(report) {
+  if (!reportElement || !reportMainElement || !reportMetaElement) {
+    return;
+  }
+
+  if (!report || !report.requestCount) {
+    reportElement.dataset.visible = "false";
+    reportMainElement.textContent = "";
+    reportMetaElement.textContent = "";
+    return;
+  }
+
+  reportElement.dataset.visible = "true";
+  reportMainElement.textContent = `${report.successCount}/${report.requestCount} ok`;
+  reportMetaElement.textContent = `${String(report.taskId || "").slice(0, 8)} · ${report.statuses.join(" · ")}`;
 }
