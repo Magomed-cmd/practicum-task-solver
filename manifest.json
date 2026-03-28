@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Task Solver",
+  "version": "1.4",
+  "description": "Автоматически проходит задачи и переходит к следующей",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://practicum.yandex.ru/*",
+    "http://127.0.0.1:8787/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "commands": {
+    "send-solutions": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Отправить 3 запроса на решение задачи"
+    }
+  }
+}

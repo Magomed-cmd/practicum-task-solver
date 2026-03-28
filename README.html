@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Solver — Документация</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0d12;
+      --surface: #11161f;
+      --surface-2: #171f2a;
+      --surface-3: #0f141c;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #d6dde8;
+      --text-dim: #7f8b9b;
+      --text-bright: #f3f7fb;
+      --accent: #58b7ff;
+      --accent-2: #8dffcf;
+      --danger: #ff5f6d;
+      --danger-soft: rgba(255, 95, 109, 0.12);
+      --warn: #ffb454;
+      --ok: #43d17b;
+      --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+      --sidebar-w: 260px;
+      --toggle-w: 22px;
+      --dur: 220ms;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      background:
+        radial-gradient(circle at top right, rgba(88, 183, 255, 0.14), transparent 28%),
+        radial-gradient(circle at 18% 16%, rgba(255, 95, 109, 0.10), transparent 24%),
+        linear-gradient(180deg, #0a0d12 0%, #080b10 100%);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.75;
+      overflow-x: hidden;
+    }
+
+    #sidebar,
+    #toggle-btn,
+    #main {
+      will-change: transform;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #sidebar {
+      position: sticky;
+      top: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      flex-shrink: 0;
+      overflow-y: auto;
+      background: rgba(17, 22, 31, 0.88);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid var(--border);
+      transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), border-color var(--dur) var(--ease);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    #sidebar.collapsed {
+      width: 0;
+      border-color: transparent;
+      transform: translateX(calc(-1 * var(--sidebar-w)));
+    }
+
+    .sidebar-inner {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      padding-bottom: 26px;
+    }
+
+    .sidebar-header {
+      padding: 24px 18px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      color: var(--text-bright);
+    }
+
+    .sidebar-meta {
+      margin-top: 5px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .nav-section {
+      padding-top: 16px;
+    }
+
+    .nav-label {
+      display: block;
+      padding: 0 18px 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+    }
+
+    .nav-item {
+      display: block;
+      padding: 6px 18px;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 12.5px;
+      border-left: 2px solid transparent;
+      transition: color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+      background: rgba(88, 183, 255, 0.09);
+      border-left-color: var(--accent);
+    }
+
+    .nav-sub {
+      padding-left: 30px;
+      font-size: 12px;
+    }
+
+    #toggle-btn {
+      position: fixed;
+      left: var(--sidebar-w);
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--toggle-w);
+      height: 54px;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 7px 7px 0;
+      background: var(--surface-2);
+      color: var(--text-dim);
+      cursor: pointer;
+      z-index: 200;
+      transition: left var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease);
+    }
+
+    #toggle-btn:hover {
+      color: var(--text-bright);
+      background: #1d2836;
+    }
+
+    #toggle-btn.collapsed {
+      left: 0;
+    }
+
+    #main {
+      flex: 1;
+      min-width: 0;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 52px 64px 80px;
+    }
+
+    .hero {
+      margin-bottom: 62px;
+      padding-bottom: 36px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 42px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--text-bright);
+      max-width: 760px;
+    }
+
+    .hero p {
+      margin-top: 16px;
+      max-width: 700px;
+      color: var(--text-dim);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .hero-bar {
+      width: 140px;
+      height: 6px;
+      border-radius: 999px;
+      margin: 18px 0 4px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 52%, var(--danger) 100%);
+      box-shadow: 0 0 22px rgba(88, 183, 255, 0.18);
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.02);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(255, 95, 109, 0.3);
+    }
+
+    .section {
+      margin-bottom: 58px;
+      scroll-margin-top: 30px;
+    }
+
+    .section-no {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: #344257;
+      margin-bottom: 4px;
+    }
+
+    .section h2 {
+      font-size: 21px;
+      color: var(--text-bright);
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: -0.01em;
+    }
+
+    .section h3 {
+      margin: 28px 0 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    ul,
+    ol {
+      margin: 12px 0 16px 18px;
+      color: var(--text);
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+    }
+
+    p code,
+    li code,
+    td code {
+      color: #99d3ff;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .code-label {
+      margin-top: 14px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      background: var(--surface-2);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    pre {
+      margin: 0 0 18px;
+      padding: 16px 18px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 0 0 8px 8px;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.65;
+    }
+
+    .tree {
+      margin: 12px 0 18px;
+      padding: 18px 20px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      margin: 16px 0;
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
+        var(--surface);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+
+    .card-title {
+      margin-bottom: 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-bright);
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--text-dim);
+      font-size: 13.5px;
+    }
+
+    .callout {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      background: rgba(88, 183, 255, 0.06);
+    }
+
+    .callout.warn {
+      border-left-color: var(--warn);
+      background: rgba(255, 180, 84, 0.08);
+    }
+
+    .callout.danger {
+      border-left-color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .callout.ok {
+      border-left-color: var(--ok);
+      background: rgba(67, 209, 123, 0.08);
+    }
+
+    .callout-label {
+      margin-bottom: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-bright);
+    }
+
+    .callout p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 18px;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mermaid {
+      margin: 16px 0;
+      padding: 24px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    .caption {
+      margin: -6px 0 18px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .footer-note {
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #243040; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #33455d; }
+
+    @media (max-width: 900px) {
+      #sidebar,
+      #toggle-btn {
+        display: none;
+      }
+
+      #main {
+        padding: 30px 20px 64px;
+      }
+
+      .hero h1 {
+        font-size: 32px;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">TASK SOLVER</div>
+        <div class="sidebar-meta">Документация · user + dev · v1.4</div>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Обзор</span>
+        <a class="nav-item" href="#overview" onclick="goTo('overview')">1. Что это</a>
+        <a class="nav-item" href="#quickstart" onclick="goTo('quickstart')">2. Быстрый старт</a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Пользователь</span>
+        <a class="nav-item" href="#usage" onclick="goTo('usage')">3. Использование</a>
+        <a class="nav-item" href="#logs" onclick="goTo('logs')">4. Логи</a>
+        <a class="nav-item" href="#troubleshooting" onclick="goTo('troubleshooting')">5. Если что-то сломалось</a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-label">Разработка</span>
+        <a class="nav-item" href="#architecture" onclick="goTo('architecture')">6. Архитектура</a>
+        <a class="nav-item nav-sub" href="#flow" onclick="goTo('flow')">— Цикл</a>
+        <a class="nav-item nav-sub" href="#modules" onclick="goTo('modules')">— Модули</a>
+        <a class="nav-item" href="#timings" onclick="goTo('timings')">7. Тайминги</a>
+        <a class="nav-item" href="#extending" onclick="goTo('extending')">8. Как расширять</a>
+        <a class="nav-item" href="#debug" onclick="goTo('debug')">9. Отладка</a>
+      </div>
+    </div>
+  </nav>
+
+  <button id="toggle-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar">‹</button>
+
+  <main id="main">
+    <section class="hero">
+      <div class="eyebrow">Task Solver Documentation</div>
+      <h1>Документация по расширению, которое проходит Practicum как одержимое, но без лишней суеты.</h1>
+      <div class="hero-bar"></div>
+      <p>
+        Это одностраничная дока для двух аудиторий сразу: пользователя, который просто хочет загрузить
+        расширение и нажать кнопку, и разработчика, которому нужно понять цикл, логи, тайминги, эвристики
+        выбора кнопок и точки расширения.
+      </p>
+      <div class="meta-row">
+        <div class="pill"><span class="pill-dot"></span> Chrome MV3</div>
+        <div class="pill">Popup + Hotkey + Auto Cycle</div>
+        <div class="pill">Практикум: <code>practicum.yandex.ru</code></div>
+        <div class="pill">Локальный лог-файл</div>
+      </div>
+    </section>
+
+    <section id="overview" class="section">
+      <div class="section-no">01</div>
+      <h2>Что это</h2>
+      <p>
+        <strong>Task Solver</strong> это Chrome-расширение для Yandex Practicum, которое умеет запускать
+        автоматический цикл прохождения задач. Оно находит текущую задачу, отправляет решение через API,
+        пережимает промежуточные экраны, дожимает теоретические диалоги и переходит к следующему шагу,
+        уроку или теме.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Для пользователя</div>
+          <p>Нужно открыть Practicum, нажать кнопку в popup и следить, как цикл сам идёт вперёд.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Для разработчика</div>
+          <p>Нужно понимать, как подбираются кнопки, где лежат тайминги, как читать лог и где менять правила.</p>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <div class="callout-label">Важно</div>
+        <p>
+          Расширение завязано на DOM-паттерны Practicum. Если Practicum поменяет тексты, селекторы или
+          порядок экранов, сначала сломается навигация по промежуточным экранам, а уже потом solve-часть.
+        </p>
+      </div>
+    </section>
+
+    <section id="quickstart" class="section">
+      <div class="section-no">02</div>
+      <h2>Быстрый старт</h2>
+
+      <h3>Установка</h3>
+      <ol>
+        <li>Открой <code>chrome://extensions</code>.</li>
+        <li>Включи режим разработчика.</li>
+        <li>Нажми <code>Load unpacked</code>.</li>
+        <li>Выбери папку <code>/Users/valiev/Downloads/test_ext</code>.</li>
+      </ol>
+
+      <h3>Если расширение уже подключено</h3>
+      <p>Переимпорт не нужен. Достаточно нажать <code>Reload</code> на карточке расширения.</p>
+
+      <div class="callout ok">
+        <div class="callout-label">Быстрый сценарий</div>
+        <p>Открыл Practicum, открыл popup, нажал <code>Запустить цикл</code>, пошёл пить кофе.</p>
+      </div>
+    </section>
+
+    <section id="usage" class="section">
+      <div class="section-no">03</div>
+      <h2>Использование</h2>
+
+      <h3>Запуск</h3>
+      <ul>
+        <li>Через popup: нажать <code>Запустить цикл</code>.</li>
+        <li>Через горячую клавишу: по умолчанию <code>Ctrl+Shift+Y</code> или <code>Command+Shift+Y</code> на macOS.</li>
+        <li>Кастомный хоткей можно назначить в <code>chrome://extensions/shortcuts</code>.</li>
+      </ul>
+
+      <h3>Остановка</h3>
+      <p>Остановка мягкая. Кнопка <code>Остановить цикл</code> не рубит процесс на полушаге, а ждёт завершения текущего действия.</p>
+
+      <h3>Какие кнопки он считает безопасными</h3>
+      <ul>
+        <li><code>Далее</code></li>
+        <li><code>Следующий урок</code></li>
+        <li><code>К следующему уроку</code></li>
+        <li><code>К следующей теме</code></li>
+        <li><code>Перейти к заданию</code></li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout-label">Что делает popup</div>
+        <p>Popup не запускает отдельную магию. Он просто шлёт сообщения в service worker и показывает текущий статус активной вкладки.</p>
+      </div>
+    </section>
+
+    <section id="logs" class="section">
+      <div class="section-no">04</div>
+      <h2>Логи</h2>
+
+      <p>Расширение может писать подробный лог в файл <code>task-solver.log</code> через локальный HTTP-сервер.</p>
+
+      <div class="code-label">Лог-сервер</div>
+      <pre><code>cd /Users/valiev/Downloads/test_ext
+node logger-server.js</code></pre>
+
+      <div class="code-label">Смотреть лог вживую</div>
+      <pre><code>tail -f /Users/valiev/Downloads/test_ext/task-solver.log</code></pre>
+
+      <div class="code-label">Очистить лог</div>
+      <pre><code>truncate -s 0 /Users/valiev/Downloads/test_ext/task-solver.log</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Сигнал</th>
+            <th>Что значит</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Кликаю по кнопке продолжения</code></td>
+            <td>Найден и нажат следующий релевантный экран.</td>
+          </tr>
+          <tr>
+            <td><code>Найден готовый следующий шаг</code></td>
+            <td>Страница изменилась так, что можно двигаться дальше.</td>
+          </tr>
+          <tr>
+            <td><code>Начинаю отправку решений</code></td>
+            <td>Внутри страницы стартовал solve-этап.</td>
+          </tr>
+          <tr>
+            <td><code>Запросы завершены</code></td>
+            <td>Сервер ответил на solve-запросы.</td>
+          </tr>
+          <tr>
+            <td><code>Автоцикл завершён без перехода</code></td>
+            <td>Навигация не смогла дожать следующий экран в пределах таймаута.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="troubleshooting" class="section">
+      <div class="section-no">05</div>
+      <h2>Если что-то сломалось</h2>
+
+      <ol>
+        <li>Нажми <code>Reload</code> у расширения в <code>chrome://extensions</code>.</li>
+        <li>Обнови вкладку Practicum.</li>
+        <li>Убедись, что запущен <code>logger-server.js</code>.</li>
+        <li>Посмотри хвост <code>task-solver.log</code>.</li>
+      </ol>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Если страница уходит в вечную загрузку</div>
+          <p>Обычно лечится таймингами: увеличиваются паузы перед solve, reload и между кликами.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Если стопается на теории</div>
+          <p>Сначала смотри на page-side логи навигации, а не на solve-часть.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture" class="section">
+      <div class="section-no">06</div>
+      <h2>Архитектура</h2>
+
+      <p>
+        Архитектура специально разнесена по ролям. <code>background.js</code> оркестрирует цикл,
+        <code>pageActions.js</code> живёт внутри страницы, <code>config.js</code> держит правила,
+        <code>automationStateStore.js</code> изолирует storage, а <code>logger.js</code> отправляет всё в файл.
+      </p>
+
+      <div class="callout warn">
+        <div class="callout-label">Критичный нюанс MV3</div>
+        <p>
+          Код, передаваемый в <code>chrome.scripting.executeScript({ func })</code>, не может рассчитывать на внешние helper’ы.
+          Поэтому page-side функции должны быть самодостаточными.
+        </p>
+      </div>
+    </section>
+
+    <section id="flow" class="section">
+      <div class="section-no">06A</div>
+      <h2>Цикл</h2>
+
+      <div class="mermaid">
+flowchart TD
+  A["Popup / Hotkey"] --> B["background.js"]
+  B --> C["State in chrome.storage.session"]
+  B --> D["advanceThroughPageInPage"]
+  B --> E["submitSolutionsInPage"]
+  D --> F["Practicum DOM"]
+  E --> G["Practicum API"]
+  G --> H["reload tab"]
+  H --> B
+  F --> I["new task_id or next screen"]
+  I --> B
+      </div>
+      <div class="caption">Упрощённый цикл расширения</div>
+
+      <p>Основные фазы на вкладку:</p>
+      <ul>
+        <li><code>solving</code></li>
+        <li><code>awaiting-next</code></li>
+      </ul>
+    </section>
+
+    <section id="modules" class="section">
+      <div class="section-no">06B</div>
+      <h2>Модули</h2>
+
+      <div class="tree">test_ext/
+├── manifest.json
+├── background.js
+├── config.js
+├── automationStateStore.js
+├── pageActions.js
+├── logger.js
+├── logger-server.js
+├── popup.html
+├── popup.js
+├── README.md
+├── DEVELOPER.md
+└── task-solver.log</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Файл</th>
+            <th>Роль</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>background.js</code></td>
+            <td>Цикл, сообщения, tab updates, stop/start, защита от дублей.</td>
+          </tr>
+          <tr>
+            <td><code>pageActions.js</code></td>
+            <td>Поиск кнопок, solve API, переходы по экрану, page-side логи.</td>
+          </tr>
+          <tr>
+            <td><code>config.js</code></td>
+            <td>Селекторы, тексты, тайминги, фазы, настройки лог-сервера.</td>
+          </tr>
+          <tr>
+            <td><code>popup.js</code></td>
+            <td>Получение статуса и переключение цикла из popup.</td>
+          </tr>
+          <tr>
+            <td><code>logger-server.js</code></td>
+            <td>Простой локальный HTTP-сервер, пишущий лог в файл.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="timings" class="section">
+      <div class="section-no">07</div>
+      <h2>Тайминги</h2>
+
+      <p>Самые чувствительные настройки лежат в <code>config.js</code>.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Параметр</th>
+            <th>Текущее значение</th>
+            <th>Зачем нужен</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>requestCount</code></td>
+            <td>3</td>
+            <td>Количество solve-запросов на одну задачу.</td>
+          </tr>
+          <tr>
+            <td><code>requestSpacingMs</code></td>
+            <td>350 ms</td>
+            <td>Разводит solve-запросы по времени.</td>
+          </tr>
+          <tr>
+            <td><code>preSolveDelayMs</code></td>
+            <td>1200 ms</td>
+            <td>Даёт странице стабилизироваться перед solve.</td>
+          </tr>
+          <tr>
+            <td><code>preReloadDelayMs</code></td>
+            <td>900 ms</td>
+            <td>Снижает шанс загнать страницу в вечную загрузку.</td>
+          </tr>
+          <tr>
+            <td><code>preClickDelayMs</code></td>
+            <td>250 ms</td>
+            <td>Небольшая пауза после scroll и до click.</td>
+          </tr>
+          <tr>
+            <td><code>postClickWaitMs</code></td>
+            <td>1600 ms</td>
+            <td>Даёт интерфейсу успеть перестроиться после click.</td>
+          </tr>
+          <tr>
+            <td><code>continueTimeoutMs</code></td>
+            <td>45000 ms</td>
+            <td>Лимит на длинные theory-цепочки и переходы между уроками/темами.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <div class="callout-label">Правило</div>
+        <p>Если нужно сделать цикл спокойнее, сначала увеличивай тайминги. Селекторы и эвристики трогай только когда реально видно, что выбрана не та кнопка.</p>
+      </div>
+    </section>
+
+    <section id="extending" class="section">
+      <div class="section-no">08</div>
+      <h2>Как расширять</h2>
+
+      <h3>Добавить безопасную continue-кнопку</h3>
+      <ul>
+        <li>Если подходит существующий селектор, добавь текст в whitelist в <code>config.js</code>.</li>
+        <li>Если нет, сначала добавляй точный селектор, потом уже общий fallback.</li>
+      </ul>
+
+      <h3>Запретить кнопку</h3>
+      <p>Добавь её в <code>blockedContinueSelectors</code> в <code>config.js</code>.</p>
+
+      <h3>Подкрутить теоретические диалоги</h3>
+      <p>Смотри <code>findSingleTheoryActionElement()</code> и <code>getTheoryActionScore()</code> в <code>pageActions.js</code>.</p>
+
+      <div class="callout danger">
+        <div class="callout-label">Осторожно</div>
+        <p>Слишком широкая эвристика на theory-кнопки быстро превращает бота в рандомный кликер по диалогам.</p>
+      </div>
+    </section>
+
+    <section id="debug" class="section">
+      <div class="section-no">09</div>
+      <h2>Отладка</h2>
+
+      <div class="code-label">Проверка config + pageActions</div>
+      <pre><code>node --input-type=module --eval "await import('file:///Users/valiev/Downloads/test_ext/config.js'); await import('file:///Users/valiev/Downloads/test_ext/pageActions.js'); console.log('config/pageActions ok');"</code></pre>
+
+      <div class="code-label">Проверка background</div>
+      <pre><code>node --input-type=module --eval "globalThis.chrome={commands:{onCommand:{addListener(){}}},runtime:{onMessage:{addListener(){}}},tabs:{onUpdated:{addListener(){}},onRemoved:{addListener(){}}}}; await import('file:///Users/valiev/Downloads/test_ext/background.js'); console.log('background ok');"</code></pre>
+
+      <p>Самые полезные сигналы при расследовании стопа:</p>
+      <ul>
+        <li><code>Пропускаю обработку, вкладка уже в работе</code> — это норма, защита от дублей.</li>
+        <li><code>Автоцикл завершён без перехода</code> — проблема в навигации, а не в solve.</li>
+        <li><code>Не удалось перейти к следующему шагу в пределах таймаута</code> — нужно смотреть DOM и цепочку кнопок.</li>
+      </ul>
+
+      <p class="footer-note">
+        Дополнительно сохранены markdown-версии доки: <code>README.md</code> и <code>DEVELOPER.md</code>.
+        Этот HTML-файл нужен как более удобная и красивая “витрина” проекта.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark",
+      themeVariables: {
+        primaryColor: "#121926",
+        primaryTextColor: "#e6f1ff",
+        primaryBorderColor: "#2f4158",
+        lineColor: "#74c0ff",
+        secondaryColor: "#161e2a",
+        tertiaryColor: "#0f141c",
+        fontFamily: "JetBrains Mono, monospace"
+      }
+    });
+
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("toggle-btn");
+    const navItems = Array.from(document.querySelectorAll(".nav-item"));
+    const sections = Array.from(document.querySelectorAll(".section"));
+
+    function toggleSidebar() {
+      const collapsed = sidebar.classList.toggle("collapsed");
+      toggleBtn.classList.toggle("collapsed", collapsed);
+      toggleBtn.textContent = collapsed ? "›" : "‹";
+    }
+
+    function goTo(id) {
+      const element = document.getElementById(id);
+      if (!element) {
+        return;
+      }
+
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveNav(id);
+    }
+
+    function setActiveNav(id) {
+      navItems.forEach((item) => {
+        const href = item.getAttribute("href") || "";
+        item.classList.toggle("active", href === `#${id}`);
+      });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)[0];
+
+      if (visible?.target?.id) {
+        setActiveNav(visible.target.id);
+      }
+    }, {
+      rootMargin: "-25% 0px -60% 0px",
+      threshold: 0.01
+    });
+
+    sections.forEach((section) => observer.observe(section));
+    setActiveNav("overview");
+  </script>
+</body>
+</html>
